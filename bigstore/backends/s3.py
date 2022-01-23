@@ -22,9 +22,9 @@ except ImportError:
     pass
 
 class S3Backend(object):
-    def __init__(self, bucket_name):
+    def __init__(self, bucket_name, endpoint_url=None):
         self.bucket = bucket_name
-        self.s3_client = aws(type="client", service_name="s3")
+        self.s3_client = aws(type="client", service_name="s3", endpoint_url=endpoint_url)
 
     @property
     def name(self):

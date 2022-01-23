@@ -20,7 +20,9 @@ from builtins import input, object
 from future.utils import bytes_to_native_str, native_str_to_bytes, iteritems
 
 from datetime import datetime
+from pathlib import Path
 import bz2
+import configparser
 import errno
 import fnmatch
 import hashlib
@@ -109,8 +111,21 @@ def backend_for_name(name):
             os.environ["AWS_ACCESS_KEY_ID"] = config('bigstore.s3.key')
             os.environ["AWS_SECRET_ACCESS_KEY"] = config('bigstore.s3.secret')
         if config('bigstore.s3.profile-name'):
-            os.environ["AWS_PROFILE"] = config('bigstore.s3.profile-name')
-        return S3Backend(bucket_name)
+            os.environ["AWS_PROFILE"] = config('bigstore.s3.profile-name') 
+        endpoint_url = None
+        if config('bigstore.s3.endpoint_url'):
+            endpoint_url = config('bigstore.s3.endpoint_url')
+        aws_config = os.getenv("AWS_CONFIG_FILE", Path.home().as_posix())+"/.aws/config"
+        if endpoint_url is None and os.path.isfile(aws_config):
+            cParser = configparser.ConfigParser()
+            cParser.read(aws_config)
+            if "default" in cParser and "s3" in cParser["default"]:
+                s3_config = cParser[os.getenv("AWS_PROFILE","default")]["s3"]
+                if len(s3_config) > 0:
+                    config_lines = [ line for line in s3_config.split("\n") if re.match(r"^endpoint_url =",line)]
+                    if len(config_lines)==1:
+                        endpoint_url = config_lines.pop().split("=")[1].strip()
+        return S3Backend(bucket_name, endpoint_url)
     elif name == 'cloudfiles':
         username = config('bigstore.cloudfiles.username')
         api_key = config('bigstore.cloudfiles.key')
